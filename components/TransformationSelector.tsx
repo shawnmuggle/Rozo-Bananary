@@ -53,7 +53,7 @@ const TransformationSelector: React.FC<TransformationSelectorProps> = ({ transfo
       <p className="text-lg text-center text-gray-400 mb-8 max-w-2xl mx-auto">
         {hasPreviousResult 
           ? "That was fun! Your last creation is ready for another round. Select a new effect to keep the chain going."
-          : "Ready to remix your reality? Pick an effect to start the magic. You can also drag and drop to reorder your favorite effects."
+          : "Ready to remix your reality? Pick an effect to start the magic.."
         }
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
