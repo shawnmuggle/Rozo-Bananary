@@ -1,12 +1,14 @@
 
 import type { GeneratedContent } from '../types';
+import { x402Service } from './x402Service';
 
-if (!process.env.OPENROUTER_API_KEY) {
-  throw new Error("OPENROUTER_API_KEY environment variable is not set.");
-}
+// if (!process.env.OPENROUTER_API_KEY) {
+//   throw new Error("OPENROUTER_API_KEY environment variable is not set.");
+// }
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_API_URL = "http://localhost:3001/rozo/api/v1/chat/completions";
+// const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+// const OPENROUTER_API_URL = "http://localhost:3001/rozo/api/v1/chat/completions";
+const OPENROUTER_API_URL = "https://aiproxy.rozo.ai/rozo/api/v1/chat/completions";
 // const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export async function editImage(
@@ -14,7 +16,8 @@ export async function editImage(
     mimeType: string, 
     prompt: string,
     maskBase64: string | null,
-    secondaryImage: { base64: string; mimeType: string } | null
+    secondaryImage: { base64: string; mimeType: string } | null,
+    walletClient?: any
 ): Promise<GeneratedContent> {
   try {
     let fullPrompt = prompt;
@@ -67,23 +70,17 @@ export async function editImage(
       max_tokens: 1000
     };
 
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+    // Use X402 payment service for the request
+    const data = await x402Service.makePaymentRequest(
+      '/rozo/api/v1/chat/completions',
+      requestBody,
+      {
+        // "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "HTTP-Referer": window.location.origin,
-        "X-Title": "ROZO Bananary",
-        "Content-Type": "application/json"
+        "X-Title": "ROZO Bananary"
       },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`OpenRouter API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
-    }
-
-    const data = await response.json();
+      walletClient
+    );
     const result: GeneratedContent = { imageUrl: null, text: null };
 
     // Process the response from OpenRouter

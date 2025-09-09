@@ -1,13 +1,17 @@
 
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useWalletClient } from 'wagmi';
 import { TRANSFORMATIONS } from './constants';
 import { editImage } from './services/geminiService';
+import { x402Service } from './services/x402Service';
 import type { GeneratedContent, Transformation } from './types';
 import TransformationSelector from './components/TransformationSelector';
 import ResultDisplay from './components/ResultDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
+import PaymentErrorMessage from './components/PaymentErrorMessage';
 import ImageEditorCanvas from './components/ImageEditorCanvas';
 // Fix: Removed unused and non-existent 'fileToDataUrl' import.
 import { dataUrlToFile, embedWatermark, loadImage, resizeImageToMatch, downloadImage } from './utils/fileUtils';
@@ -18,6 +22,9 @@ import HistoryPanel from './components/HistoryPanel';
 type ActiveTool = 'mask' | 'none';
 
 const App: React.FC = () => {
+  const { isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  
   const [transformations, setTransformations] = useState<Transformation[]>(() => {
     try {
       const savedOrder = localStorage.getItem('transformationOrder');
@@ -55,6 +62,12 @@ const App: React.FC = () => {
   const [activeTool, setActiveTool] = useState<ActiveTool>('none');
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState<boolean>(false);
+  const [paymentInfo, setPaymentInfo] = useState<{
+    required: boolean;
+    price?: string;
+    network?: string;
+    description?: string;
+  } | null>(null);
   
   useEffect(() => {
     try {
@@ -64,6 +77,20 @@ const App: React.FC = () => {
       console.error("Failed to save transformation order to localStorage", e);
     }
   }, [transformations]);
+
+  // Check payment requirements on component mount
+  useEffect(() => {
+    const checkPaymentInfo = async () => {
+      try {
+        const info = await x402Service.checkPaymentRequired('/rozo/api/v1/chat/completions');
+        setPaymentInfo(info);
+      } catch (error) {
+        console.error('Failed to check payment info:', error);
+      }
+    };
+    
+    checkPaymentInfo();
+  }, []);
 
 
   const handleSelectTransformation = (transformation: Transformation) => {
@@ -139,7 +166,8 @@ const App: React.FC = () => {
                 primaryMimeType,
                 promptToUse, // First prompt
                 null, // No mask for step 1
-                null  // No secondary image for step 1
+                null,  // No secondary image for step 1
+                walletClient
             );
 
             if (!stepOneResult.imageUrl) {
@@ -168,7 +196,8 @@ const App: React.FC = () => {
                 stepOneImageMimeType,
                 selectedTransformation.stepTwoPrompt!, // Second prompt
                 null, // No mask for step 2
-                secondaryImagePayload // Use the RESIZED color palette here
+                secondaryImagePayload, // Use the RESIZED color palette here
+                walletClient
             );
             
             if (stepTwoResult.imageUrl) {
@@ -196,7 +225,8 @@ const App: React.FC = () => {
                 primaryMimeType, 
                 promptToUse,
                 maskBase64,
-                secondaryImagePayload
+                secondaryImagePayload,
+                walletClient
             );
 
             if (result.imageUrl) {
@@ -288,16 +318,19 @@ const App: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400 cursor-pointer" onClick={handleResetApp}>
             🍌 ROZO Bananary｜ZHO
           </h1>
-          <button
-            onClick={toggleHistoryPanel}
-            className="flex items-center gap-2 py-2 px-3 text-sm font-semibold text-gray-200 bg-gray-800/50 rounded-md hover:bg-gray-700/50 transition-colors duration-200"
-            aria-label="Toggle generation history"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-            </svg>
-            <span>History</span>
-          </button>
+          <div className="flex items-center gap-4">
+            <ConnectButton />
+            <button
+              onClick={toggleHistoryPanel}
+              className="flex items-center gap-2 py-2 px-3 text-sm font-semibold text-gray-200 bg-gray-800/50 rounded-md hover:bg-gray-700/50 transition-colors duration-200"
+              aria-label="Toggle generation history"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              <span>History</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -382,6 +415,26 @@ const App: React.FC = () => {
                     </div>
                   )}
                   
+                  {/* Payment Info Display */}
+                  {paymentInfo && paymentInfo.required && (
+                    <div className="mt-4 p-3 bg-yellow-900/30 border border-yellow-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-300 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293z" clipRule="evenodd" />
+                        </svg>
+                        <span className="font-semibold">Payment Required</span>
+                      </div>
+                      <p className="text-yellow-200 text-sm">
+                        <strong>Price:</strong> {paymentInfo.price} USDC<br />
+                        <strong>Network:</strong> Base{paymentInfo.network === 'base' ? ' (Mainnet)' : ''}<br />
+                        {paymentInfo.description && <><strong>Service:</strong> {paymentInfo.description}</>}
+                      </p>
+                      <p className="text-yellow-300 text-xs mt-2">
+                        You'll be prompted to pay when you generate an image.
+                      </p>
+                    </div>
+                  )}
+                  
                    <button
                     onClick={handleGenerate}
                     disabled={isGenerateDisabled}
@@ -397,10 +450,21 @@ const App: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        <span>Generate Image</span>
+                        {paymentInfo?.required ? (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                            </svg>
+                            <span>Pay {paymentInfo.price} & Generate</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            <span>Generate Image</span>
+                          </>
+                        )}
                       </>
                     )}
                   </button>
@@ -411,7 +475,23 @@ const App: React.FC = () => {
               <div className="flex flex-col p-6 bg-gray-950/60 backdrop-blur-lg rounded-xl border border-white/10 shadow-2xl shadow-black/20">
                 <h2 className="text-xl font-semibold mb-4 text-orange-500 self-start">Result</h2>
                 {isLoading && <div className="flex-grow flex items-center justify-center"><LoadingSpinner message={loadingMessage} /></div>}
-                {error && <div className="flex-grow flex items-center justify-center w-full"><ErrorMessage message={error} /></div>}
+                {error && (
+                  <div className="flex-grow flex items-center justify-center w-full">
+                    {error.includes('Payment required') ? (
+                      <PaymentErrorMessage 
+                        message={error} 
+                        onRetry={() => {
+                          setError(null);
+                          if (isConnected) {
+                            handleGenerate();
+                          }
+                        }}
+                      />
+                    ) : (
+                      <ErrorMessage message={error} />
+                    )}
+                  </div>
+                )}
                 {!isLoading && !error && generatedContent && (
                     <ResultDisplay 
                         content={generatedContent} 
