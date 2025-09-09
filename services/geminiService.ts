@@ -1,12 +1,12 @@
 
-import { GoogleGenAI, Modality } from "@google/genai";
 import type { GeneratedContent } from '../types';
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set.");
+if (!process.env.OPENROUTER_API_KEY) {
+  throw new Error("OPENROUTER_API_KEY environment variable is not set.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export async function editImage(
     base64ImageData: string, 
@@ -17,95 +17,130 @@ export async function editImage(
 ): Promise<GeneratedContent> {
   try {
     let fullPrompt = prompt;
-    const parts: any[] = [
+    
+    // Build the content array for OpenRouter API
+    const content: any[] = [
       {
-        inlineData: {
-          data: base64ImageData,
-          mimeType: mimeType,
-        },
+        type: "text",
+        text: fullPrompt
       },
+      {
+        type: "image_url",
+        image_url: {
+          url: `data:${mimeType};base64,${base64ImageData}`
+        }
+      }
     ];
 
-    // The mask should immediately follow the image it applies to.
+    // Add mask image if provided
     if (maskBase64) {
-      parts.push({
-        inlineData: {
-          data: maskBase64,
-          mimeType: 'image/png', // Masks are always drawn as PNGs
-        },
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/png;base64,${maskBase64}`
+        }
       });
       fullPrompt = `Apply the following instruction only to the masked area of the image: "${prompt}". Preserve the unmasked area.`;
+      // Update the text content with the modified prompt
+      content[0].text = fullPrompt;
     }
     
+    // Add secondary image if provided (for multi-image transformations)
     if (secondaryImage) {
-        parts.push({
-            inlineData: {
-                data: secondaryImage.base64,
-                mimeType: secondaryImage.mimeType,
-            },
-        });
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:${secondaryImage.mimeType};base64,${secondaryImage.base64}`
+        }
+      });
     }
 
-    parts.push({ text: fullPrompt });
+    const requestBody = {
+      model: "google/gemini-2.5-flash-image-preview",
+      messages: [
+        {
+          role: "user",
+          content: content
+        }
+      ],
+      max_tokens: 1000
+    };
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image-preview',
-      contents: { parts },
-      config: {
-        responseModalities: [Modality.IMAGE, Modality.TEXT],
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "HTTP-Referer": window.location.origin,
+        "X-Title": "ROZO Bananary",
+        "Content-Type": "application/json"
       },
+      body: JSON.stringify(requestBody)
     });
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
     const result: GeneratedContent = { imageUrl: null, text: null };
 
-    // Safely access response parts to prevent crashes
-    const responseParts = response.candidates?.[0]?.content?.parts;
-
-    if (responseParts) {
-      for (const part of responseParts) {
-        if (part.text) {
-          result.text = (result.text ? result.text + "\n" : "") + part.text;
-        } else if (part.inlineData) {
-          const base64ImageBytes: string = part.inlineData.data;
-          result.imageUrl = `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
+    // Process the response from OpenRouter
+    if (data.choices && data.choices.length > 0) {
+      const choice = data.choices[0];
+      
+      if (choice.message) {
+        // Get text content
+        if (choice.message.content) {
+          result.text = choice.message.content;
+        }
+        
+        // Get image content from the images array
+        if (choice.message.images && choice.message.images.length > 0) {
+          const imageData = choice.message.images[0];
+          if (imageData.type === "image_url" && imageData.image_url && imageData.image_url.url) {
+            result.imageUrl = imageData.image_url.url;
+          }
         }
       }
     }
 
+    // If no image was returned, check for errors
     if (!result.imageUrl) {
-        const finishReason = response.candidates?.[0]?.finishReason;
-        const safetyRatings = response.candidates?.[0]?.safetyRatings;
-        let errorMessage = "The model did not return an image. It might have refused the request. Please try a different image or prompt.";
-        
-        if (finishReason === 'SAFETY') {
-            const blockedCategories = safetyRatings?.filter(r => r.blocked).map(r => r.category).join(', ');
-            errorMessage = `The request was blocked for safety reasons. Categories: ${blockedCategories || 'Unknown'}. Please modify your prompt or image.`;
-        }
-        
-        throw new Error(errorMessage);
+      let errorMessage = "The model did not return an image. It might have refused the request. Please try a different image or prompt.";
+      
+      if (data.choices && data.choices[0]?.finish_reason === "safety") {
+        errorMessage = "The request was blocked for safety reasons. Please modify your prompt or image.";
+      } else if (data.choices && data.choices[0]?.finish_reason === "content_filter") {
+        errorMessage = "The content was filtered. Please try a different prompt or image.";
+      }
+      
+      throw new Error(errorMessage);
     }
 
     return result;
 
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
+    console.error("Error calling OpenRouter API:", error);
     if (error instanceof Error) {
         let errorMessage = error.message;
         try {
-            // The error message from the SDK might be a JSON string.
+            // Try to parse error message if it's JSON
             const parsedError = JSON.parse(errorMessage);
             if (parsedError.error && parsedError.error.message) {
-                // Add a user-friendly message for common errors.
-                if (parsedError.error.status === 'RESOURCE_EXHAUSTED') {
-                    errorMessage = "You've likely exceeded the request limit. Please wait a moment before trying again.";
-                } else if (parsedError.error.code === 500 || parsedError.error.status === 'UNKNOWN') {
+                // Add user-friendly messages for common errors
+                if (parsedError.error.status === 'rate_limit_exceeded') {
+                    errorMessage = "You've exceeded the rate limit. Please wait a moment before trying again.";
+                } else if (parsedError.error.code === 500 || parsedError.error.status === 'internal_server_error') {
                     errorMessage = "An unexpected server error occurred. This might be a temporary issue. Please try again in a few moments.";
+                } else if (parsedError.error.status === 'insufficient_quota') {
+                    errorMessage = "Insufficient quota. Please check your OpenRouter account balance.";
                 } else {
                     errorMessage = parsedError.error.message;
                 }
             }
         } catch (e) {
-            // Not a JSON string, use the original message.
+            // Not a JSON string, use the original message
         }
         throw new Error(errorMessage);
     }

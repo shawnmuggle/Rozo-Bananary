@@ -17,6 +17,19 @@
 </div>
 
 
+## 环境变量设置
+
+在项目根目录创建 `.env` 文件，添加以下环境变量：
+
+```bash
+# OpenRouter API Configuration
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# Optional: Site configuration for OpenRouter rankings
+SITE_URL=https://your-site.com
+SITE_NAME=ROZO Bananary
+```
+
 ## 无需提示词，丝滑衔接
 
 
