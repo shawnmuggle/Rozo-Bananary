@@ -2,10 +2,8 @@ import { createPaymentHeader, selectPaymentRequirements } from 'x402/client';
 import type { PaymentRequirements } from 'x402/shared';
 
 export class X402PaymentService {
-  private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:3001') {
-    this.baseUrl = baseUrl;
+  constructor() {
   }
 
   /**
@@ -17,7 +15,7 @@ export class X402PaymentService {
     headers: Record<string, string> = {},
     walletClient?: any
   ): Promise<any> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${endpoint}`;
     
     try {
       // Initial request - will return 402 Payment Required
@@ -49,7 +47,12 @@ export class X402PaymentService {
           const paymentHeader = await createPaymentHeader(
             walletClient,
             paymentInfo.x402Version || 1,
-            selectedRequirement
+            selectedRequirement,
+            {
+              // Enable fast confirmation mode
+              fastConfirmation: true,
+              skipTxWait: true
+            }
           );
 
           // Retry request with payment header

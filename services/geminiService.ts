@@ -72,7 +72,8 @@ export async function editImage(
 
     // Use X402 payment service for the request
     const data = await x402Service.makePaymentRequest(
-      '/rozo/api/v1/chat/completions',
+      // '/rozo/api/v1/chat/completions',
+      OPENROUTER_API_URL,
       requestBody,
       {
         // "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
