@@ -6,7 +6,8 @@ if (!process.env.OPENROUTER_API_KEY) {
 }
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_API_URL = "http://localhost:3001/rozo/api/v1/chat/completions";
+// const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export async function editImage(
     base64ImageData: string, 
