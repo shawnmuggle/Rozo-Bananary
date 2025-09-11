@@ -66,18 +66,18 @@ export const TRANSFORMATIONS: Transformation[] = [
   //   emoji: "🪄",
   //   description: "Converts drawings or illustrations into stunningly realistic photos."
   // },
-  { 
-    title: "Fashion Magazine", 
-    prompt: "Transform the photo into a stylized, ultra-realistic fashion magazine portrait with cinematic lighting.", 
-    emoji: "📸",
-    description: "Gives your photo a high-fashion, editorial look worthy of a magazine cover."
-  },
-  { 
-    title: "Hyper-realistic", 
-    prompt: "Generate a hyper-realistic, fashion-style photo with strong, direct flash lighting, grainy texture, and a cool, confident pose.", 
-    emoji: "✨",
-    description: "Applies a gritty, direct-flash photography style for a cool, hyper-realistic vibe."
-  },
+  // { 
+  //   title: "Fashion Magazine", 
+  //   prompt: "Transform the photo into a stylized, ultra-realistic fashion magazine portrait with cinematic lighting.", 
+  //   emoji: "📸",
+  //   description: "Gives your photo a high-fashion, editorial look worthy of a magazine cover."
+  // },
+  // { 
+  //   title: "Hyper-realistic", 
+  //   prompt: "Generate a hyper-realistic, fashion-style photo with strong, direct flash lighting, grainy texture, and a cool, confident pose.", 
+  //   emoji: "✨",
+  //   description: "Applies a gritty, direct-flash photography style for a cool, hyper-realistic vibe."
+  // },
 
   // Design & Product
   // { 
