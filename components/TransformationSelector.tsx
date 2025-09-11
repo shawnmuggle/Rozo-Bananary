@@ -55,7 +55,7 @@ const TransformationSelector: React.FC<TransformationSelectorProps> = ({ transfo
           : ""
         }
       </p>
-      <h2 className="text-3xl font-bold text-center mb-4 text-orange-500">AI Image Generator powered by Nano Banana x Rozo</h2>
+      <h2 className="text-3xl font-bold text-center mb-4 text-orange-500">AI Image Generator powered by Nano Banana x402</h2>
 
       {/* Gallery Preview Image */}
       <div className="flex justify-center mb-8">
