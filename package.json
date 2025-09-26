@@ -1,5 +1,5 @@
 {
-  "name": "🍌-nano-bananary｜zho",
+  "name": "\ud83c\udf4c-nano-bananary\uff5czho",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,6 +12,8 @@
     "@coinbase/x402": "^0.6.0",
     "@rainbow-me/rainbowkit": "^2.2.8",
     "@tanstack/react-query": "^5.87.1",
+    "dotenv": "^8.2.0",
+    "node-fetch": "^3.3.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "viem": "^2.37.5",

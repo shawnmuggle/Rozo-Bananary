@@ -1,5 +1,6 @@
 import { createPaymentHeader, selectPaymentRequirements } from 'x402/client';
 import type { PaymentRequirements } from 'x402/shared';
+import { STELLAR_CONFIG, getStellarToken } from '../config/stellar';
 
 export class X402PaymentService {
 
@@ -7,7 +8,7 @@ export class X402PaymentService {
   }
 
   /**
-   * Make a paid request to the API with X402 payment handling
+   * Make a paid request to the API with X402 payment handling or Stellar token
    */
   async makePaymentRequest(
     endpoint: string,
@@ -16,9 +17,34 @@ export class X402PaymentService {
     walletClient?: any
   ): Promise<any> {
     const url = `${endpoint}`;
-    
+
+    // Check for stellar token
+    const stellarToken = getStellarToken();
+
     try {
-      // Initial request - will return 402 Payment Required
+      // If stellar token exists, use it instead of x402
+      if (stellarToken) {
+        console.log('Using Stellar API with token:', stellarToken.substring(0, 6) + '...');
+
+        // Use the same endpoint but with stellar token header
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-token': stellarToken,
+            ...headers
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Stellar API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        return await response.json();
+      }
+
+      // Original x402 flow
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -86,6 +112,20 @@ export class X402PaymentService {
 
     } catch (error) {
       console.error('X402 payment request error:', error);
+
+      // Provide better error messages for common issues
+      if (error instanceof Error && stellarToken) {
+        if (error.message.includes('Failed to fetch')) {
+          throw new Error('Unable to reach the API server. Please check your internet connection.');
+        }
+        if (error.message.includes('401') || error.message.includes('403')) {
+          throw new Error(`Invalid Stellar token. Please check your access token.`);
+        }
+        if (error.message.includes('Stellar API request failed')) {
+          throw new Error(`Stellar API error: ${error.message}`);
+        }
+      }
+
       throw error;
     }
   }
@@ -99,8 +139,14 @@ export class X402PaymentService {
     network?: string;
     description?: string;
   }> {
+    // If using stellar token, payment is not required
+    const stellarToken = getStellarToken();
+    if (stellarToken) {
+      return { required: false };
+    }
+
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     try {
       const response = await fetch(url, {
         method: 'POST',

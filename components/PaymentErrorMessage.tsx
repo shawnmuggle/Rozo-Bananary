@@ -5,9 +5,10 @@ import { useAccount } from 'wagmi';
 interface PaymentErrorMessageProps {
   message: string;
   onRetry?: () => void;
+  isUsingStellar?: boolean;
 }
 
-const PaymentErrorMessage: React.FC<PaymentErrorMessageProps> = ({ message, onRetry }) => {
+const PaymentErrorMessage: React.FC<PaymentErrorMessageProps> = ({ message, onRetry, isUsingStellar = false }) => {
   const { isConnected } = useAccount();
 
   const isPaymentError = message.includes('Payment required');
@@ -25,7 +26,7 @@ const PaymentErrorMessage: React.FC<PaymentErrorMessageProps> = ({ message, onRe
       
       <p className="text-red-200 mb-4">{message}</p>
       
-      {isPaymentError && (
+      {isPaymentError && !isUsingStellar && (
         <div className="space-y-3">
           {!isConnected ? (
             <div className="p-3 bg-yellow-900/30 border border-yellow-500/30 rounded-md">

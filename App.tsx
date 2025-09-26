@@ -18,13 +18,24 @@ import { dataUrlToFile, embedWatermark, loadImage, resizeImageToMatch, downloadI
 import ImagePreviewModal from './components/ImagePreviewModal';
 import MultiImageUploader from './components/MultiImageUploader';
 import Gallery from './components/Gallery';
+import { isUsingStellar, getStellarToken } from './config/stellar';
 
 type ActiveTool = 'mask' | 'none';
 
 const App: React.FC = () => {
   const { isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
-  
+
+  // Check for stellar parameter in URL
+  const [stellarToken, setStellarToken] = useState<string | null>(getStellarToken());
+  const isStellarMode = isUsingStellar();
+
+  useEffect(() => {
+    // Update stellar token if URL changes
+    const token = getStellarToken();
+    setStellarToken(token);
+  }, []);
+
   const [transformations, setTransformations] = useState<Transformation[]>(() => {
     try {
       const savedOrder = localStorage.getItem('transformationOrder');
@@ -77,8 +88,14 @@ const App: React.FC = () => {
     }
   }, [transformations]);
 
-  // Check payment requirements on component mount
+  // Check payment requirements on component mount (skip if using stellar)
   useEffect(() => {
+    if (isStellarMode) {
+      // No payment required with stellar token
+      setPaymentInfo({ required: false });
+      return;
+    }
+
     const checkPaymentInfo = async () => {
       try {
         const info = await x402Service.checkPaymentRequired('/rozo/api/v1/chat/completions');
@@ -87,9 +104,9 @@ const App: React.FC = () => {
         console.error('Failed to check payment info:', error);
       }
     };
-    
+
     checkPaymentInfo();
-  }, []);
+  }, [isStellarMode]);
 
 
   const handleSelectTransformation = (transformation: Transformation) => {
@@ -426,14 +443,14 @@ const App: React.FC = () => {
                   )}
 
                   <div className="flex gap-3 mt-6">
-                    {!isConnected && (
+                    {!isConnected && !isStellarMode && (
                       <div className="flex-shrink-0">
                         <ConnectButton />
                       </div>
                     )}
                     <button
                       onClick={handleGenerate}
-                      disabled={isGenerateDisabled || !isConnected}
+                      disabled={isGenerateDisabled || (!isConnected && !isStellarMode)}
                       className="flex-1 py-3 px-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-black font-semibold rounded-lg shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-yellow-500 disabled:bg-gray-800 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
                     >
                     {isLoading ? (
@@ -475,8 +492,9 @@ const App: React.FC = () => {
                 {error && (
                   <div className="flex-grow flex items-center justify-center w-full">
                     {error.includes('Payment required') ? (
-                      <PaymentErrorMessage 
-                        message={error} 
+                      <PaymentErrorMessage
+                        message={error}
+                        isUsingStellar={isStellarMode}
                         onRetry={() => {
                           setError(null);
                           if (isConnected) {
