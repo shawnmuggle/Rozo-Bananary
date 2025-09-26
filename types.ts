@@ -3,6 +3,7 @@ export interface Transformation {
   title: string;
   prompt: string;
   emoji: string;
+  image?: string | null;
   description: string;
   isMultiImage?: boolean;
   isTwoStep?: boolean;

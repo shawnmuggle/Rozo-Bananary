@@ -65,10 +65,24 @@ const TransformationSelector: React.FC<TransformationSelectorProps> = ({ transfo
             onDragEnd={handleDragEnd}
             onDragOver={handleDragOver}
             onClick={() => onSelect(trans)}
-            className={`group flex flex-col items-center justify-center text-center p-4 aspect-square bg-gray-950 rounded-xl border border-white/10 hover:border-orange-500 transition-all duration-200 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-orange-500 cursor-grab active:cursor-grabbing ${dragging ? 'border-dashed' : ''}`}
+            className={`group relative aspect-square bg-gray-950 rounded-xl border border-white/10 hover:border-orange-500 transition-all duration-200 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-orange-500 cursor-grab active:cursor-grabbing ${dragging ? 'border-dashed' : ''} overflow-hidden`}
           >
-            <span className="text-4xl mb-2 transition-transform duration-200 group-hover:scale-110">{trans.emoji}</span>
-            <span className="font-semibold text-sm text-gray-200">{trans.title}</span>
+            {trans.image ? (
+              <>
+                <img
+                  src={trans.image}
+                  alt={trans.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                <span className="absolute bottom-3 left-0 right-0 font-semibold text-sm text-white text-center px-2">{trans.title}</span>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-4 h-full">
+                <span className="text-4xl mb-2 transition-transform duration-200 group-hover:scale-110">{trans.emoji}</span>
+                <span className="font-semibold text-sm text-gray-200">{trans.title}</span>
+              </div>
+            )}
           </button>
         ))}
       </div>
