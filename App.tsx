@@ -17,7 +17,7 @@ import ImageEditorCanvas from './components/ImageEditorCanvas';
 import { dataUrlToFile, embedWatermark, loadImage, resizeImageToMatch, downloadImage } from './utils/fileUtils';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import MultiImageUploader from './components/MultiImageUploader';
-import HistoryPanel from './components/HistoryPanel';
+import Gallery from './components/Gallery';
 
 type ActiveTool = 'mask' | 'none';
 
@@ -60,8 +60,7 @@ const App: React.FC = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [activeTool, setActiveTool] = useState<ActiveTool>('none');
-  const [history, setHistory] = useState<GeneratedContent[]>([]);
-  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState<boolean>(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
   const [paymentInfo, setPaymentInfo] = useState<{
     required: boolean;
     price?: string;
@@ -210,7 +209,7 @@ const App: React.FC = () => {
                 secondaryImageUrl: stepOneResult.imageUrl, // Store intermediate result
             };
             setGeneratedContent(finalResult);
-            setHistory(prev => [finalResult, ...prev]);
+            // Result stored
 
         } else { // Single-step generation
              let secondaryImagePayload = null;
@@ -234,7 +233,7 @@ const App: React.FC = () => {
             }
 
             setGeneratedContent(result);
-            setHistory(prev => [result, ...prev]);
+            // Result stored
         }
     } catch (err) {
       console.error(err);
@@ -266,17 +265,11 @@ const App: React.FC = () => {
     }
   }, []);
   
-  const toggleHistoryPanel = () => setIsHistoryPanelOpen(prev => !prev);
-  
-  const handleUseHistoryImageAsInput = (imageUrl: string) => {
+  const toggleGallery = () => setIsGalleryOpen(prev => !prev);
+
+  const handleSelectGalleryImage = (imageUrl: string) => {
       handleUseImageAsInput(imageUrl);
-      setIsHistoryPanelOpen(false);
-  };
-  
-  const handleDownloadFromHistory = (imageUrl: string, type: 'line-art' | 'final-result' | 'single-result') => {
-      const fileExtension = imageUrl.split(';')[0].split('/')[1] || 'png';
-      const filename = `${type}-${Date.now()}.${fileExtension}`;
-      downloadImage(imageUrl, filename);
+      setIsGalleryOpen(false);
   };
 
   const handleBackToSelection = () => {
@@ -318,19 +311,16 @@ const App: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400 cursor-pointer" onClick={handleResetApp}>
             🍌 ROZO Bananary
           </h1>
-          <div className="flex items-center gap-4">
-            <ConnectButton />
-            <button
-              onClick={toggleHistoryPanel}
-              className="flex items-center gap-2 py-2 px-3 text-sm font-semibold text-gray-200 bg-gray-800/50 rounded-md hover:bg-gray-700/50 transition-colors duration-200"
-              aria-label="Toggle generation history"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-              <span>History</span>
-            </button>
-          </div>
+          <button
+            onClick={toggleGallery}
+            className="flex items-center gap-2 py-2 px-3 text-sm font-semibold text-gray-200 bg-gray-800/50 rounded-md hover:bg-gray-700/50 transition-colors duration-200"
+            aria-label="Open gallery"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+            </svg>
+            <span>Gallery</span>
+          </button>
         </div>
       </header>
 
@@ -434,12 +424,18 @@ const App: React.FC = () => {
                       </p>
                     </div>
                   )}
-                  
-                   <button
-                    onClick={handleGenerate}
-                    disabled={isGenerateDisabled}
-                    className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-black font-semibold rounded-lg shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-yellow-500 disabled:bg-gray-800 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-                  >
+
+                  <div className="flex gap-3 mt-6">
+                    {!isConnected && (
+                      <div className="flex-shrink-0">
+                        <ConnectButton />
+                      </div>
+                    )}
+                    <button
+                      onClick={handleGenerate}
+                      disabled={isGenerateDisabled || !isConnected}
+                      className="flex-1 py-3 px-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-black font-semibold rounded-lg shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-yellow-500 disabled:bg-gray-800 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                    >
                     {isLoading ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -467,7 +463,8 @@ const App: React.FC = () => {
                         )}
                       </>
                     )}
-                  </button>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -514,12 +511,10 @@ const App: React.FC = () => {
         )}
       </main>
       <ImagePreviewModal imageUrl={previewImageUrl} onClose={handleClosePreview} />
-      <HistoryPanel
-        isOpen={isHistoryPanelOpen}
-        onClose={toggleHistoryPanel}
-        history={history}
-        onUseImage={handleUseHistoryImageAsInput}
-        onDownload={handleDownloadFromHistory}
+      <Gallery
+        isOpen={isGalleryOpen}
+        onClose={toggleGallery}
+        onSelectImage={handleSelectGalleryImage}
       />
     </div>
   );

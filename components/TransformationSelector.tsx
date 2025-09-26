@@ -55,24 +55,6 @@ const TransformationSelector: React.FC<TransformationSelectorProps> = ({ transfo
           : ""
         }
       </p>
-      <h2 className="text-3xl font-bold text-center mb-4 text-orange-500">AI Image Generator powered by Nano Banana x402</h2>
-
-      {/* Gallery Preview Image */}
-      <div className="flex justify-center mb-8">
-        <div className="relative group">
-          <img 
-            src="/gallery.png" 
-            alt="Gallery Preview" 
-            className="max-w-full h-auto rounded-xl border border-white/20 shadow-2xl shadow-orange-500/10 transition-transform duration-300 group-hover:scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          <div className="absolute bottom-4 left-4 right-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <p className="text-sm font-medium">See what's possible with ROZO Bananary</p>
-          </div>
-        </div>
-      </div>
-
-      <h2 className="text-3xl font-bold text-center mb-4 text-orange-500">Let's Go!</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
         {transformations.map((trans, index) => (
           <button
